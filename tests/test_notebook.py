@@ -28,20 +28,20 @@ def shell(tmp_path, monkeypatch):
 
 
 def test_cell_accepts_literal(shell):
-    result = shell.run_cell("x = 1\nd = @{x, y: 2}")
+    result = shell.run_cell("x = 1\nd = j{x, y: 2}")
     assert result.success, result.error_before_exec or result.error_in_exec
     assert shell.user_ns["d"] == {"x": 1, "y": 2}
 
 
 def test_state_is_shared_between_cells(shell):
     shell.run_cell("name = 'Ana'")
-    result = shell.run_cell("payload = @{name, tags: ['a']}")
+    result = shell.run_cell("payload = j{name, tags: ['a']}")
     assert result.success
     assert shell.user_ns["payload"] == {"name": "Ana", "tags": ["a"]}
 
 
 def test_line_magic_in_the_same_cell(shell):
-    result = shell.run_cell("x = 1\n%pwd\nd = @{x}")
+    result = shell.run_cell("x = 1\n%pwd\nd = j{x}")
     assert result.success, result.error_before_exec or result.error_in_exec
     assert shell.user_ns["d"] == {"x": 1}
 
@@ -53,14 +53,14 @@ def test_cells_without_marker_are_untouched(shell):
 
 
 def test_syntax_error_shows_pyjs_message(shell):
-    result = shell.run_cell("d = @{class: 1}")
+    result = shell.run_cell("d = j{class: 1}")
     assert not result.success
     assert isinstance(result.error_before_exec, pyjs.PyJSSyntaxError)
     assert "keyword" in result.error_before_exec.msg
 
 
 def test_runtime_error_in_cell_reports_cell_line(shell):
-    result = shell.run_cell("a = 1\nr = @{\n    a,\n    c: undefined_name,\n}")
+    result = shell.run_cell("a = 1\nr = j{\n    a,\n    c: undefined_name,\n}")
     assert isinstance(result.error_in_exec, NameError)
     assert result.error_in_exec.__traceback__.tb_next.tb_lineno == 4
 
@@ -74,9 +74,9 @@ def test_registration_is_idempotent(shell):
 
 def test_load_ext_magic(shell):
     notebook.unregister(shell)
-    assert not shell.run_cell("d = @{}").success
+    assert not shell.run_cell("d = j{}").success
     shell.run_line_magic("load_ext", "pyjs")
-    assert shell.run_cell("x = 1\nd = @{x}").success
+    assert shell.run_cell("x = 1\nd = j{x}").success
     assert shell.user_ns["d"] == {"x": 1}
 
 
@@ -86,7 +86,7 @@ def test_plain_import_pyjs_in_a_fresh_notebook_process(tmp_path):
         from IPython.core.interactiveshell import InteractiveShell
         ip = InteractiveShell.instance()
         assert ip.run_cell("import pyjs").success
-        result = ip.run_cell("x = 1\\nd = @{x, y: 2}")
+        result = ip.run_cell("x = 1\\nd = j{x, y: 2}")
         assert result.success, result.error_before_exec or result.error_in_exec
         assert ip.user_ns["d"] == {"x": 1, "y": 2}
         print("ok")

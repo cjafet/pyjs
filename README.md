@@ -7,10 +7,10 @@ JavaScript-style object literals for Python. Stop writing every key and value tw
 payload = {"name": name, "email": email, "address": address}
 
 # With PyJS
-payload = @{name, email, address}
+payload = j{name, email, address}
 ```
 
-PyJS is a small transpiler. It rewrites `@{...}` literals into ordinary Python dicts before your code runs and leaves everything else exactly as you wrote it. It works in notebooks, in scripts, and in imported modules.
+PyJS is a small transpiler. It rewrites `j{...}` literals into ordinary Python dicts before your code runs and leaves everything else exactly as you wrote it. It works in notebooks, in scripts, and in imported modules.
 
 ## Install
 
@@ -26,7 +26,7 @@ In a notebook:
 
 Pin a release by adding a tag, for example `...<repo>.git@v0.2.0`.
 
-Requires Python 3.9 or newer. It is developed and tested on Python 3.13. Using `@{}` inside f-string fields needs Python 3.12 or newer.
+Requires Python 3.9 or newer. It is developed and tested on Python 3.13. Using `j{}` inside f-string fields needs Python 3.12 or newer.
 
 ## Quick start
 
@@ -38,31 +38,31 @@ Run this once, in the first cell:
 import pyjs
 ```
 
-Every cell after that understands `@{}`:
+Every cell after that understands `j{}`:
 
 ```python
 n_estimators = 200
 max_depth = 8
 
-params = @{n_estimators, max_depth}
+params = j{n_estimators, max_depth}
 # {'n_estimators': 200, 'max_depth': 8}
 
-param_grid = @{n_estimators: [100, 200], max_depth: [4, 8]}
+param_grid = j{n_estimators: [100, 200], max_depth: [4, 8]}
 # {'n_estimators': [100, 200], 'max_depth': [4, 8]}
 
-requests.post(url, json=@{name, version, params})
+requests.post(url, json=j{name, version, params})
 ```
 
 `%load_ext pyjs` does the same thing if you prefer the extension style.
 
 ### In scripts: `.pyjs` files
 
-Python reads a whole file before running anything, so `@{}` cannot appear in a regular `.py` file. Put code that uses it in `.pyjs` files instead.
+Python reads a whole file before running anything, so `j{}` cannot appear in a regular `.py` file. Put code that uses it in `.pyjs` files instead.
 
 ```python
 # models.pyjs
 def make_user(name, email, age):
-    return @{name, email, age, active: True}
+    return j{name, email, age, active: True}
 ```
 
 Run a `.pyjs` file directly:
@@ -85,24 +85,24 @@ print(models.make_user("Ana", "ana@example.com", 30))
 
 | You write | You get |
 |---|---|
-| `@{name, age}` | `{'name': name, 'age': age}` |
-| `@{name, active: True}` | `{'name': name, 'active': True}` |
-| `@{email: address}` | `{'email': address}` |
-| `@{"Content-Type": ct}` | `{"Content-Type": ct}` |
-| `@{[key]: value}` | `{key: value}` (computed key) |
-| `@{**defaults, debug: True}` | `{**defaults, 'debug': True}` (spread) |
-| `@{user: @{name, age}}` | `{'user': {'name': name, 'age': age}}` (nesting) |
+| `j{name, age}` | `{'name': name, 'age': age}` |
+| `j{name, active: True}` | `{'name': name, 'active': True}` |
+| `j{email: address}` | `{'email': address}` |
+| `j{"Content-Type": ct}` | `{"Content-Type": ct}` |
+| `j{[key]: value}` | `{key: value}` (computed key) |
+| `j{**defaults, debug: True}` | `{**defaults, 'debug': True}` (spread) |
+| `j{user: j{name, age}}` | `{'user': {'name': name, 'age': age}}` (nesting) |
 
 Values can be any expression: lists, lambdas, f-strings, function calls, and so on.
 
 ### Rules
 
-- **A bare name used as a key becomes a string**, exactly like JavaScript. `@{active: True}` means `{'active': True}`.
+- **A bare name used as a key becomes a string**, exactly like JavaScript. `j{active: True}` means `{'active': True}`.
 - **Quoted keys, numbers, and `True`/`False`/`None` are kept as written.**
-- **Python keywords can't be bare keys.** Write `@{"class": "x"}`, not `@{class: "x"}`. PyJS tells you when you forget.
-- **Comprehensions use plain braces.** `@{k: v for ...}` is rejected; write `{k: v for k, v in pairs}` as usual.
-- **Everything without the `@` marker is untouched.** Sets, dicts, f-strings, strings, and comments behave exactly as in Python.
-- **`a @{b}` is still matrix multiplication.** The marker only counts where a value is expected.
+- **Python keywords can't be bare keys.** Write `j{"class": "x"}`, not `j{class: "x"}`. PyJS tells you when you forget.
+- **Comprehensions use plain braces.** `j{k: v for ...}` is rejected; write `{k: v for k, v in pairs}` as usual.
+- **Everything without the `j` marker is untouched.** Sets, dicts, f-strings, strings, and comments behave exactly as in Python.
+- **`obj.j{...}` is attribute access, not a literal.** The marker only counts where `j` is not preceded by a dot.
 
 ## Command line
 
@@ -119,8 +119,8 @@ pyjs show FILE                # print the generated Python
 ```python
 import pyjs
 
-pyjs.transpile("d = @{x, y: 2}")             # "d = {'x': x, 'y': 2}"
-pyjs.run("print(@{x})", namespace={"x": 1})   # run a snippet in a namespace
+pyjs.transpile("d = j{x, y: 2}")             # "d = {'x': x, 'y': 2}"
+pyjs.run("print(j{x})", namespace={"x": 1})   # run a snippet in a namespace
 pyjs.run_file("main.pyjs", args=["--fast"])   # run a file as the main script
 pyjs.install() / pyjs.uninstall()             # the .pyjs import hook
 ```
@@ -129,7 +129,7 @@ Syntax mistakes raise `pyjs.PyJSSyntaxError`, a `SyntaxError` that carries the f
 
 ## How it works
 
-PyJS tokenizes your source with Python's own tokenizer, finds the `@{` markers, and rewrites only those literals. It never searches text, so strings and comments are safe.
+PyJS tokenizes your source with Python's own tokenizer, finds the `j{` markers, and rewrites only those literals. It never searches text, so strings and comments are safe.
 
 - **Line numbers are preserved.** The generated code has the same number of lines as your source, so tracebacks point at the right line.
 - **Imports are transpiled in memory.** No generated files are written, and nothing is cached.
@@ -137,9 +137,9 @@ PyJS tokenizes your source with Python's own tokenizer, finds the `@{` markers, 
 
 ## Limitations
 
-- `@{}` only works in `.pyjs` files and notebook cells, not in regular `.py` files.
-- Editors, linters, and formatters don't understand `@{}` yet. A notebook may highlight it as an error even though the cell runs.
-- In notebooks, `@{}` inside the body of a cell magic such as `%%time` is not rewritten, because IPython turns that body into a string first.
+- `j{}` only works in `.pyjs` files and notebook cells, not in regular `.py` files.
+- Editors, linters, and formatters don't understand `j{}` yet. A notebook may highlight it as an error even though the cell runs.
+- In notebooks, `j{}` inside the body of a cell magic such as `%%time` is not rewritten, because IPython turns that body into a string first.
 
 ## Development
 

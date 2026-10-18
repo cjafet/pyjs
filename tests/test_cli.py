@@ -18,7 +18,7 @@ def cli(*args, cwd):
 
 
 def test_run_file_with_args_and_sibling_import(tmp_path):
-    (tmp_path / "helper.pyjs").write_text("def build(name):\n    return @{name}\n")
+    (tmp_path / "helper.pyjs").write_text("def build(name):\n    return j{name}\n")
     (tmp_path / "main.pyjs").write_text(
         "import sys\nfrom helper import build\n"
         "if __name__ == '__main__':\n    print(build(sys.argv[1]))\n"
@@ -29,20 +29,20 @@ def test_run_file_with_args_and_sibling_import(tmp_path):
 
 
 def test_explicit_run_subcommand(tmp_path):
-    (tmp_path / "main.pyjs").write_text("x = 1\nprint(@{x})\n")
+    (tmp_path / "main.pyjs").write_text("x = 1\nprint(j{x})\n")
     result = cli("run", "main.pyjs", cwd=tmp_path)
     assert result.stdout.strip() == "{'x': 1}"
 
 
 def test_show_prints_generated_python(tmp_path):
-    (tmp_path / "a.pyjs").write_text("x = 1\ny = @{x}\n")
+    (tmp_path / "a.pyjs").write_text("x = 1\ny = j{x}\n")
     result = cli("show", "a.pyjs", cwd=tmp_path)
     assert result.returncode == 0
     assert result.stdout == "x = 1\ny = {'x': x}\n"
 
 
 def test_build_writes_runnable_py_next_to_source(tmp_path):
-    (tmp_path / "a.pyjs").write_text("x = 1\nprint(@{x})\n")
+    (tmp_path / "a.pyjs").write_text("x = 1\nprint(j{x})\n")
     result = cli("build", "a.pyjs", cwd=tmp_path)
     assert result.returncode == 0, result.stderr
     generated = (tmp_path / "a.py").read_text()
@@ -53,16 +53,16 @@ def test_build_writes_runnable_py_next_to_source(tmp_path):
 
 def test_build_folder_and_output_option(tmp_path):
     (tmp_path / "pkg").mkdir()
-    (tmp_path / "pkg" / "m.pyjs").write_text("y = @{}\n")
+    (tmp_path / "pkg" / "m.pyjs").write_text("y = j{}\n")
     assert cli("build", "pkg", cwd=tmp_path).returncode == 0
     assert (tmp_path / "pkg" / "m.py").exists()
-    (tmp_path / "one.pyjs").write_text("z = @{}\n")
+    (tmp_path / "one.pyjs").write_text("z = j{}\n")
     assert cli("build", "one.pyjs", "-o", "out.py", cwd=tmp_path).returncode == 0
     assert (tmp_path / "out.py").exists()
 
 
 def test_syntax_error_is_short_and_exits_1(tmp_path):
-    (tmp_path / "main.pyjs").write_text("a = 1\nx = @{class: 1}\n")
+    (tmp_path / "main.pyjs").write_text("a = 1\nx = j{class: 1}\n")
     result = cli("main.pyjs", cwd=tmp_path)
     assert result.returncode == 1
     assert "keyword" in result.stderr and "line 2" in result.stderr
@@ -71,7 +71,7 @@ def test_syntax_error_is_short_and_exits_1(tmp_path):
 
 def test_runtime_error_reports_source_line(tmp_path):
     (tmp_path / "main.pyjs").write_text(
-        "a = 1\nr = @{\n    a,\n}\nraise ValueError('boom')\n"
+        "a = 1\nr = j{\n    a,\n}\nraise ValueError('boom')\n"
     )
     result = cli("main.pyjs", cwd=tmp_path)
     assert result.returncode == 1

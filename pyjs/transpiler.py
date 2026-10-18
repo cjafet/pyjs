@@ -1,15 +1,15 @@
 """
-PyJS core: rewrite `@{...}` object literals into plain Python dicts.
+PyJS core: rewrite `j{...}` object literals into plain Python dicts.
 
-    @{name, age}                  -> {'name': name, 'age': age}
-    @{name, active: True}         -> {'name': name, 'active': True}
-    @{email: address}             -> {'email': address}
-    @{"Content-Type": ct}         -> {"Content-Type": ct}
-    @{[key]: value}               -> {key: value}               (computed key)
-    @{**defaults, debug: True}    -> {**defaults, 'debug': True}
-    @{id: @{name, age}}           -> nested literals work
+    j{name, age}                  -> {'name': name, 'age': age}
+    j{name, active: True}         -> {'name': name, 'active': True}
+    j{email: address}             -> {'email': address}
+    j{"Content-Type": ct}         -> {"Content-Type": ct}
+    j{[key]: value}               -> {key: value}               (computed key)
+    j{**defaults, debug: True}    -> {**defaults, 'debug': True}
+    j{id: j{name, age}}           -> nested literals work
 
-Only braces introduced by the `@` marker are touched. Everything else (sets,
+Only braces introduced by the `j` marker are touched. Everything else (sets,
 dicts, f-strings, strings, comments) is left exactly as written, and the
 output has the same number of lines as the input, so tracebacks line up.
 """
@@ -17,9 +17,9 @@ import io
 import keyword
 import tokenize
 
-__all__ = ["PyJSSyntaxError", "transpile"]
+__all__ = ["PREFIX", "PyJSSyntaxError", "transpile"]
 
-FSTRING_END = getattr(tokenize, "FSTRING_END", None)
+PREFIX = "j"
 
 IGNORED = {
     tokenize.NL,
@@ -45,7 +45,7 @@ def _line_text(source, row):
 
 def transpile(source, filename="<pyjs>", validate=True):
     """
-    Return `source` with every `@{...}` literal rewritten as a Python dict.
+    Return `source` with every `j{...}` literal rewritten as a Python dict.
 
     validate=True compiles the result to make sure it is valid Python. Pass
     False when the caller compiles it anyway (or when the code is only valid
@@ -95,39 +95,26 @@ def transpile(source, filename="<pyjs>", validate=True):
     if stack:
         fail(stack[-1], "Unmatched {!r}".format(tokens[stack[-1]].string))
 
-    # ---- find @{ markers ------------------------------------------------
+    # ---- find j{ markers -------------------------------------------------
     def prev_token(i):
-        """Previous token, looking past line continuations inside brackets."""
+        """Previous token, looking past NL and COMMENT tokens."""
         i -= 1
         while i >= 0 and tokens[i].type in (tokenize.NL, tokenize.COMMENT):
             i -= 1
         return i
 
-    def is_operand_end(i):
-        """True if token i ends an operand, which makes a following '@' matmul."""
-        t = tokens[i]
-        if t.type in (tokenize.NUMBER, tokenize.STRING):
-            return True
-        if FSTRING_END is not None and t.type == FSTRING_END:
-            return True
-        if t.type == tokenize.NAME:
-            return not keyword.iskeyword(t.string) or t.string in CONSTANTS
-        return t.type == tokenize.OP and t.string in CLOSERS
-
-    # Literal text inside f-strings is FSTRING_MIDDLE, never an OP token, so a
-    # literal "@{" in an f-string is not matched. Only real expression parts are.
-    markers = {}  # index of '@' -> index of '{'
+    markers = {}  # index of 'j' NAME -> index of '{'
     for i, t in enumerate(tokens):
-        if t.type != tokenize.OP or t.string != "@":
+        if t.type != tokenize.NAME or t.string != PREFIX:
             continue
         if i + 1 >= len(tokens):
             continue
         nxt = tokens[i + 1]
         if nxt.type != tokenize.OP or nxt.string != "{" or nxt.start != t.end:
-            continue  # '@' and '{' must touch
+            continue  # 'j' and '{' must touch
         p = prev_token(i)
-        if p >= 0 and is_operand_end(p):
-            continue  # `a @{b}` is plain matrix multiplication
+        if p >= 0 and tokens[p].type == tokenize.OP and tokens[p].string == ".":
+            continue  # `obj.j{...}` is attribute access, not a marker
         markers[i] = i + 1
 
     if not markers:
@@ -288,7 +275,7 @@ def transpile(source, filename="<pyjs>", validate=True):
         if has_top_level_for(lo, hi):
             fail(
                 lo,
-                "Comprehensions are not supported inside @{}; "
+                "Comprehensions are not supported inside j{}; "
                 "use a regular {k: v for ...} instead",
             )
 

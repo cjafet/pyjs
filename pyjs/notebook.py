@@ -1,14 +1,14 @@
 """
-Notebook support: makes every IPython/Jupyter cell understand `@{...}`.
+Notebook support: makes every IPython/Jupyter cell understand `j{...}`.
 
 `import pyjs` registers this automatically when it runs inside IPython, and
 `%load_ext pyjs` does the same. Cell magics such as `%%time` are turned into
-string arguments by IPython before this hook runs, so `@{}` inside the body of
+string arguments by IPython before this hook runs, so `j{}` inside the body of
 a cell magic is not rewritten.
 """
 import sys
 
-from .transpiler import transpile
+from .transpiler import PREFIX, transpile
 
 __all__ = [
     "load_ipython_extension",
@@ -24,7 +24,7 @@ TRANSFORMER_NAME = "pyjs_cell_transformer"
 def pyjs_cell_transformer(lines):
     """IPython input transformer: list of lines in, list of lines out."""
     source = "".join(lines)
-    if "@{" not in source:
+    if PREFIX + "{" not in source:
         return lines
     # IPython compiles the cell itself (and allows top-level await), so skip
     # our own validation. Syntax errors in @{} propagate and IPython shows them.

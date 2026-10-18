@@ -3,11 +3,11 @@ PyJS: JavaScript-style object literals for Python.
 
     import pyjs               # once per program or notebook
 
-    user = @{name, age}       # in a .pyjs file or a notebook cell
+    user = j{name, age}       # in a .pyjs file or a notebook cell
 
 Importing pyjs registers two things:
   * an import hook, so `import models` also finds `models.pyjs`
-  * in IPython/Jupyter, a cell transformer, so every later cell accepts `@{}`
+  * in IPython/Jupyter, a cell transformer, so every later cell accepts `j{}`
 
 Command line: `pyjs file.pyjs`, `pyjs build ...`, `pyjs show ...` (see --help).
 """
@@ -17,7 +17,7 @@ from .notebook import load_ipython_extension, unload_ipython_extension
 from .runner import run, run_file
 from .transpiler import PyJSSyntaxError, transpile
 
-__version__ = "0.2.0"
+__version__ = "0.1.0"
 __all__ = [
     "PyJSSyntaxError",
     "install",
