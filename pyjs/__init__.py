@@ -17,7 +17,7 @@ from .notebook import load_ipython_extension, unload_ipython_extension
 from .runner import run, run_file
 from .transpiler import PyJSSyntaxError, transpile
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "PyJSSyntaxError",
     "install",
