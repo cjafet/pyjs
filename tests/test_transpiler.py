@@ -242,3 +242,162 @@ def test_error_reports_line_and_column():
 def test_unmatched_bracket():
     with pytest.raises(PyJSSyntaxError):
         transpile("x = j{a, b")
+
+
+# ---- destructuring ---------------------------------------------------------
+
+def test_destr_shorthand():
+    ns = ev("user = {'name': 'Ana', 'age': 30}\nj{name, age} = user")
+    assert ns["name"] == "Ana" and ns["age"] == 30
+
+
+def test_destr_rename():
+    ns = ev("user = {'email': 'a@b'}\nj{email: mail} = user")
+    assert ns["mail"] == "a@b"
+
+
+def test_destr_default_missing():
+    ns = ev("user = {'name': 'Ana'}\nj{name, role = 'guest'} = user")
+    assert ns["name"] == "Ana" and ns["role"] == "guest"
+
+
+def test_destr_default_present():
+    ns = ev("user = {'role': 'admin'}\nj{role = 'guest'} = user")
+    assert ns["role"] == "admin"
+
+
+def test_destr_nested():
+    ns = ev("data = {'address': {'city': 'SP'}}\nj{address: j{city}} = data")
+    assert ns["city"] == "SP"
+
+
+def test_destr_nested_multiple():
+    ns = ev("data = {'a': {'x': 1, 'y': 2}}\nj{a: j{x, y}} = data")
+    assert ns["x"] == 1 and ns["y"] == 2
+
+
+def test_destr_deep_nested():
+    ns = ev("data = {'a': {'b': {'c': 42}}}\nj{a: j{b: j{c}}} = data")
+    assert ns["c"] == 42
+
+
+def test_destr_rest():
+    ns = ev("d = {'name': 'Ana', 'age': 30, 'role': 'admin'}\nj{name, **rest} = d")
+    assert ns["name"] == "Ana" and ns["rest"] == {"age": 30, "role": "admin"}
+
+
+def test_destr_mixed():
+    src = (
+        "data = {'name': 'Ana', 'email': 'a@b', 'role': 'admin', 'x': 1}\n"
+        "j{name, email: mail, role = 'guest', **rest} = data"
+    )
+    ns = ev(src)
+    assert ns["name"] == "Ana"
+    assert ns["mail"] == "a@b"
+    assert ns["role"] == "admin"
+    assert ns["rest"] == {"x": 1}
+
+
+def test_destr_once_only():
+    src = (
+        "calls = 0\n"
+        "def get():\n"
+        "    global calls\n"
+        "    calls += 1\n"
+        "    return {'a': 1, 'b': 2}\n"
+        "j{a, b} = get()\n"
+    )
+    ns = ev(src)
+    assert ns["a"] == 1 and ns["b"] == 2 and ns["calls"] == 1
+
+
+def test_destr_missing_key_raises():
+    with pytest.raises(KeyError):
+        ev("j{x} = {}")
+
+
+def test_destr_single_target():
+    ns = ev("d = {'x': 42}\nj{x} = d")
+    assert ns["x"] == 42
+
+
+def test_destr_in_function():
+    src = (
+        "def f(d):\n"
+        "    j{name, age} = d\n"
+        "    return name, age\n"
+        "r = f({'name': 'Ana', 'age': 30})\n"
+    )
+    assert ev(src)["r"] == ("Ana", 30)
+
+
+def test_destr_in_class_body():
+    src = (
+        "_data = {'x': 1, 'y': 2}\n"
+        "class C:\n"
+        "    j{x, y} = _data\n"
+    )
+    ns = ev(src)
+    assert ns["C"].x == 1 and ns["C"].y == 2
+
+
+def test_destr_rhs_is_literal():
+    ns = ev("j{x} = j{x: 42}")
+    assert ns["x"] == 42
+
+
+def test_destr_stmt_start_no_eq_stays_literal():
+    assert transpile("a = 1\nj{a}.get('a')\n") == "a = 1\n{'a': a}.get('a')\n"
+
+
+# ---- destructuring line count preservation ---------------------------------
+
+@pytest.mark.parametrize(
+    "src",
+    [
+        "j{name} = d\n",
+        "j{name, age} = d\n",
+        "j{\n    name,\n    age,\n} = d\n",
+        "j{\n    name,\n    age,\n    **rest,\n} = d\n",
+        "j{a: j{x}} = d\n",
+    ],
+)
+def test_destr_line_count_preserved(src):
+    assert transpile(src, validate=False).count("\n") == src.count("\n")
+
+
+# ---- destructuring errors --------------------------------------------------
+
+def test_destr_empty_error():
+    with pytest.raises(PyJSSyntaxError):
+        transpile("j{} = x\n")
+
+
+def test_destr_non_name_target_error():
+    with pytest.raises(PyJSSyntaxError):
+        transpile("j{a: 1} = x\n")
+
+
+def test_destr_rest_not_last_error():
+    with pytest.raises(PyJSSyntaxError):
+        transpile("j{**rest, name} = x\n")
+
+
+def test_destr_two_rests_error():
+    with pytest.raises(PyJSSyntaxError):
+        transpile("j{**a, **b} = x\n")
+
+
+def test_destr_augmented_error():
+    with pytest.raises(PyJSSyntaxError):
+        transpile("j{name} += x\n")
+
+
+def test_destr_chained_error():
+    with pytest.raises(PyJSSyntaxError):
+        transpile("a = j{x} = y\n")
+
+
+def test_destr_keyword_key_error():
+    with pytest.raises(PyJSSyntaxError):
+        transpile("j{class} = x\n")

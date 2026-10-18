@@ -95,6 +95,26 @@ print(models.make_user("Ana", "ana@example.com", 30))
 
 Values can be any expression: lists, lambdas, f-strings, function calls, and so on.
 
+## Destructuring
+
+A `j{...}` at the start of a statement, followed by `=`, destructures a dict into individual variables:
+
+| You write | You get |
+|---|---|
+| `j{name, age} = user` | `name, age = user['name'], user['age']` |
+| `j{email: mail} = user` | `mail = user['email']` (rename) |
+| `j{role = "guest"} = user` | `role = user.get('role', "guest")` (default) |
+| `j{address: j{city}} = user` | `city = user['address']['city']` (nested) |
+| `j{name, **rest} = user` | `name = ...; rest = remaining keys as a dict` |
+
+The right-hand side is evaluated exactly once. A missing key raises `KeyError` unless a default is given. Everywhere else, `j{...}` is still a dict literal.
+
+```python
+response = requests.get(url).json()
+j{name, email: mail, role = "viewer"} = response
+# name, mail, role are now local variables
+```
+
 ### Rules
 
 - **A bare name used as a key becomes a string**, exactly like JavaScript. `j{active: True}` means `{'active': True}`.
@@ -154,7 +174,6 @@ The tests cover the transpiler, the import hook, the command line, and the noteb
 
 Planned, with the exact syntax still to be decided:
 
-- Destructuring, like `const {name, age} = user` in JavaScript
 - Optional chaining, like `user?.address?.city`
 - Dot access on objects, like `user.name`, through a small runtime library
 
