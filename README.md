@@ -15,13 +15,13 @@ PyJS is a small transpiler. It rewrites `@{...}` literals into ordinary Python d
 ## Install
 
 ```bash
-pip install git+https://github.com/<your-user>/<repo>.git
+pip install git+https://github.com/cjafet/pyjs.git
 ```
 
 In a notebook:
 
 ```python
-%pip install git+https://github.com/<your-user>/<repo>.git
+%pip install git+https://github.com/cjafet/pyjs.git
 ```
 
 Pin a release by adding a tag, for example `...<repo>.git@v0.2.0`.
